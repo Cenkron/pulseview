@@ -19,6 +19,10 @@
 ##
 
 cmake_minimum_required(VERSION 2.8.12)
+# In MSYS2, a recent version of Boost needs this
+if(DEFINED ENV{MSYSTEM})
+	cmake_policy(SET CMP0071 NEW)
+endif()
 
 include(GNUInstallDirs)
 
@@ -68,7 +72,6 @@ endif()
 
 list(APPEND PKGDEPS glib-2.0>=2.28.0)
 list(APPEND PKGDEPS glibmm-2.4>=2.28.0)
-
 list(APPEND PKGDEPS libsigrokcxx>=0.6.0)
 
 if(ENABLE_DECODE)
@@ -93,6 +96,14 @@ if(WIN32)
 	if(NOT DEFINED ENV{MSYSTEM})
 		pkg_check_modules(QT5ALL REQUIRED Qt5Widgets Qt5Gui Qt5Svg)
 	endif()
+endif()
+
+# MSYS2 workaround: Use pkg_check_modules to find libzip and python36
+if(DEFINED ENV{MSYSTEM})
+	message(STATUS "Building using MSYS2")
+	pkg_check_modules(LIBZIP REQUIRED libzip)
+	list(APPEND PKGDEPS libzip)
+	pkg_check_modules(PYTHON REQUIRED python36)
 endif()
 
 set(QT_LIBRARIES Qt5::Gui Qt5::Widgets Qt5::Svg)
@@ -480,6 +491,17 @@ else()
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${PULSEVIEW_LINK_LIBS})
+
+# MSYSTEM workaround: Link into libraries that didn't make it otherwise
+if(DEFINED ENV{MSYSTEM})
+	target_link_libraries(${PROJECT_NAME}
+		libzip.a
+		libzip.dll.a
+		libiconv.dll.a
+		libglib-2.0.dll.a
+		libpython36.a
+	)
+endif()
 
 if(WIN32 AND NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 	# Pass -mwindows so that no "DOS box" opens when PulseView is started.
