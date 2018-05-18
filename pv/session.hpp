@@ -189,6 +189,8 @@ private:
 
 	void update_signals();
 
+	void report_failure();
+
 	shared_ptr<data::SignalBase> signalbase_from_channel(
 		shared_ptr<sigrok::Channel> channel) const;
 
@@ -226,6 +228,8 @@ Q_SIGNALS:
 	void signals_changed();
 
 	void name_changed();
+
+	void capture_failure();
 
 	void trigger_event(int segment_id, util::Timestamp location);
 

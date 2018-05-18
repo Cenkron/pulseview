@@ -45,6 +45,11 @@ class QVBoxLayout;
 
 namespace pv {
 
+enum capture_mode {
+	Single,
+	Repetitive
+};
+
 class DeviceManager;
 
 namespace toolbars {
@@ -68,6 +73,14 @@ class MainWindow : public QMainWindow, public GlobalSettingsInterface
 
 private:
 	static const QString WindowTitle;
+
+	capture_mode const DefaultCaptureMode = Single;
+	int const DefaultRearmTime = 5000; // mSec
+	
+	bool repetitive_rearm_permitted_;
+	capture_mode capture_mode_;
+	int repetitive_rearm_time_; // in mSec
+	QTimer repetitive_rearm_timer_;
 
 public:
 	explicit MainWindow(DeviceManager &device_manager,
@@ -97,6 +110,11 @@ public:
 
 	void on_setting_changed(const QString &key, const QVariant &value);
 
+	capture_mode get_capture_mode();
+	void set_capture_mode(capture_mode);
+	int get_repetitive_rearm_time();
+	void set_repetitive_rearm_time(int);
+
 private:
 	void setup_ui();
 
@@ -120,8 +138,11 @@ private Q_SLOTS:
 
 	void on_new_session_clicked();
 	void on_run_stop_clicked();
+	void on_triggermode_clicked();
 	void on_settings_clicked();
 
+	void on_repetitive_rearm_timeout();
+	void on_session_capture_failure();
 	void on_session_name_changed();
 	void on_capture_state_changed(QObject *obj);
 
@@ -153,7 +174,7 @@ private:
 	map< shared_ptr<Session>, QMainWindow*> session_windows_;
 
 	QWidget *static_tab_widget_;
-	QToolButton *new_session_button_, *run_stop_button_, *settings_button_;
+	QToolButton *new_session_button_, *run_stop_button_, *settings_button_, *triggermode_button_;
 	QTabWidget session_selector_;
 	QSignalMapper session_state_mapper_;
 
