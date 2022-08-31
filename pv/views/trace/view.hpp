@@ -183,6 +183,14 @@ public:
 	void set_zero_position(const pv::util::Timestamp& position);
 
 	void reset_zero_position();
+	
+	bool is_set_zero_position();
+
+	void set_trigger_zero_position(const pv::util::Timestamp& position);
+
+	void enable_trigger_zero_position(bool enable);
+
+	void select_zero_position();
 
 	pv::util::Timestamp zero_offset() const;
 
@@ -535,7 +543,11 @@ private:
 	pv::util::Timestamp zero_offset_;
 	/// Shows whether the user set a custom zero offset that we should keep
 	bool custom_zero_offset_set_;
-
+	pv::util::Timestamp custom_zero_offset_;
+	/// Shows whether the user set a trigger zero offset that we should keep
+	bool trigger_zero_offset_set_;
+	pv::util::Timestamp trigger_zero_offset_;
+	/// Shows whether a first trigger event occurred
 	bool updating_scroll_;
 	bool restoring_state_;
 	bool header_was_shrunk_;

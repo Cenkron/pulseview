@@ -158,7 +158,7 @@ void Ruler::contextMenuEvent(QContextMenuEvent *event)
 	connect(set_zero_position, SIGNAL(triggered()), this, SLOT(on_setZeroPosition()));
 	menu->addAction(set_zero_position);
 
-	if (view_.zero_offset().convert_to<double>() != 0) {
+	if (view_.is_set_zero_position()) {
 		QAction *const reset_zero_position = new QAction(tr("Reset zero point"), this);
 		connect(reset_zero_position, SIGNAL(triggered()), this, SLOT(on_resetZeroPosition()));
 		menu->addAction(reset_zero_position);

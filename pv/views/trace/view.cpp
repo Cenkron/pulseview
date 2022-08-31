@@ -286,6 +286,9 @@ void View::reset_view_state()
 	ruler_offset_ = 0;
 	zero_offset_ = 0;
 	custom_zero_offset_set_ = false;
+	custom_zero_offset_ = 0;
+	trigger_zero_offset_set_ = false;
+	trigger_zero_offset_ = 0;
 	updating_scroll_ = false;
 	restoring_state_ = false;
 	always_zoom_to_fit_ = false;
@@ -529,8 +532,11 @@ void View::restore_settings(QSettings &settings)
 		set_offset(GlobalSettings::restore_timestamp(settings, "offset"));
 	}
 
+	if (settings.contains("trigger_zero_position"))
+		set_trigger_zero_position(GlobalSettings::restore_timestamp(settings, "trigger_zero_position"));
+
 	if (settings.contains("zero_offset"))
-		set_zero_position(GlobalSettings::restore_timestamp(settings, "zero_offset"));
+		set_zero_position(offset_ + GlobalSettings::restore_timestamp(settings, "zero_offset"));
 
 	if (settings.contains("splitter_state"))
 		splitter_->restoreState(settings.value("splitter_state").toByteArray());
@@ -614,30 +620,42 @@ const Timestamp& View::ruler_offset() const
 
 void View::set_zero_position(const pv::util::Timestamp& position)
 {
-	zero_offset_ = -position;
-	custom_zero_offset_set_ = true;
-
-	// Force an immediate update of the offsets
-	set_offset(offset_, true);
-	ruler_->update();
+	custom_zero_offset_ = -position;	// Time bar clicked to set custom zero
+	custom_zero_offset_set_ = (custom_zero_offset_ != 0);
+	select_zero_position();
 }
 
 void View::reset_zero_position()
 {
-	zero_offset_ = 0;
-
-	// When enabled, the first trigger for this segment is used as the zero position
-	GlobalSettings settings;
-	bool trigger_is_zero_time = settings.value(GlobalSettings::Key_View_TriggerIsZeroTime).toBool();
-
-	if (trigger_is_zero_time) {
-		vector<util::Timestamp> triggers = session_.get_triggers(current_segment_);
-
-		if (triggers.size() > 0)
-			zero_offset_ = triggers.front();
-	}
-
+	custom_zero_offset_ = 0;			// Time bar clicked to reset custom zero
 	custom_zero_offset_set_ = false;
+	select_zero_position();
+}
+
+bool View::is_set_zero_position()
+{
+	return (custom_zero_offset_set_);
+}
+
+void View::set_trigger_zero_position(const pv::util::Timestamp& position)
+{
+	trigger_zero_offset_ = -position;
+	select_zero_position();
+}
+
+void View::enable_trigger_zero_position(bool enable)
+{
+	trigger_zero_offset_set_ = (enable  &&  (trigger_zero_offset_ != 0));
+}
+
+void View::select_zero_position()
+{
+	if (custom_zero_offset_set_)
+		zero_offset_ = custom_zero_offset_;
+	else if (trigger_zero_offset_set_)
+		zero_offset_ = trigger_zero_offset_;
+	else
+		zero_offset_ = 0;
 
 	// Force an immediate update of the offsets
 	set_offset(offset_, true);
@@ -1203,8 +1221,13 @@ void View::trigger_event(int segment_id, util::Timestamp location)
 	if ((uint32_t)segment_id != current_segment_)
 		return;
 
-	if (!custom_zero_offset_set_)
-		reset_zero_position();
+	vector<util::Timestamp> triggers = session_.get_triggers(current_segment_);
+	GlobalSettings settings;
+
+	if (triggers.size() > 0) {
+		set_trigger_zero_position(triggers.front());
+		enable_trigger_zero_position(settings.value(GlobalSettings::Key_View_TriggerIsZeroTime).toBool());
+	}
 
 	trigger_markers_.push_back(make_shared<TriggerMarker>(*this, location));
 }
@@ -1996,7 +2019,11 @@ void View::capture_state_updated(int state)
 
 		trigger_markers_.clear();
 		if (!custom_zero_offset_set_)
-			set_zero_position(0);
+			reset_zero_position();
+
+		// Activate "set time zero..." if the setting is enabled.
+		enable_trigger_zero_position(settings.value(GlobalSettings::Key_View_TriggerIsZeroTime).toBool());
+		select_zero_position();
 
 		scale_at_acq_start_ = scale_;
 		offset_at_acq_start_ = offset_;
@@ -2090,8 +2117,9 @@ void View::on_settingViewTriggerIsZeroTime_changed(const QVariant new_value)
 {
 	(void)new_value;
 
-	if (!custom_zero_offset_set_)
-		reset_zero_position();
+	GlobalSettings settings;
+	enable_trigger_zero_position(settings.value(GlobalSettings::Key_View_TriggerIsZeroTime).toBool());
+	select_zero_position();
 }
 
 void View::perform_delayed_view_update()
