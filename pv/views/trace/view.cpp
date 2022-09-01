@@ -615,7 +615,7 @@ const Timestamp& View::ruler_offset() const
 void View::set_zero_position(const pv::util::Timestamp& position)
 {
 	zero_offset_ = -position;
-	custom_zero_offset_set_ = true;
+	custom_zero_offset_set_ = (position != 0);
 
 	// Force an immediate update of the offsets
 	set_offset(offset_, true);
@@ -634,7 +634,7 @@ void View::reset_zero_position()
 		vector<util::Timestamp> triggers = session_.get_triggers(current_segment_);
 
 		if (triggers.size() > 0)
-			zero_offset_ = triggers.front();
+			zero_offset_ = -triggers.front();
 	}
 
 	custom_zero_offset_set_ = false;

@@ -1,0 +1,39 @@
+Bug 1794
+The functionality underlying the checkbox "Show time at the trigger" is broken.
+Checked or unchecked, it does nothing.
+
+I have diagnosed the problem, most of which lies within the file pv/views/trace/view.cpp
+
+Two functions (methods) are provided to support ruler class functionality provided for managing a display time offset:
+
+void View::set_zero_position(const pv::util::Timestamp& position)
+void View::reset_zero_position()
+
+These two functions are normally called as a result of right clicking on the ruler bar and selecting set or clear of a custom time zero.
+
+Somewhere along the line, the set function came to be (mis)used for another purpose.
+In particular, a call to set a custom time zero at time zero, that did not, and could not, originate from the click on rler bar mechanism.
+This resulted in a permanently set custom time setting on top of the actual time zero.
+This resulted in the side effect of disabling the trigger time zero setting, because it is lower priority than a custom setting.
+I cll it permanent because of a bug in the ruler class in which it is assumed that if the zero time is the default, then there cannot be a custom setting.
+This results in the option to dismiss the custom setting being missing.
+It is not quite permanent because this can all be circumvented by setting and cancelling a genuine (non-zero) custim time zero.
+The view state was normally left in a hard to reset state of having a custom zero set when that was not actually the case.  
+
+Two "fixes" withing view.cpp made the trigger-zero mechanism work.
+These "fixes" can be found in https://github.com/Cenkron/pulseview -b diagnose-trigger-zero
+
+1. When applying the time offset the time at trigger needed to be subtracted (rather than added) from the signal time.  This was just a typical coding error.
+
+2. Making it impossible to set custom zero time on top of the real time zero.
+
+Rather than adopt my "fix", the underlying problems should be addressed.
+I have done that in https://github.com/Cenkron/pulseview -b dev-trigger-zero
+
+The fixes in that set of three files do the following:
+
+1. Fixes the bug in the custom zero position reset code in ruler.cpp
+
+2. Fixes the bug in the bogus call to set a zero point on top of zero.
+
+3. Allows the "set time..." checkbox to be effective even after the capture completes.
